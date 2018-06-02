@@ -15,7 +15,7 @@ class StormTrooper{
 			work: 0,
 			bathroom: 20,
 			food: 1,
-			sleep: 100
+			sleep: 1
 		}
 		this.maxDesires = {
 			work: 100,
@@ -43,14 +43,20 @@ class StormTrooper{
 		//console.log(this.name + ' stats: ', JSON.stringify(this.desires));
 	}
 	updateStat( stat, valueDelta){
+		console.log( ' updating ' + this.name + ' ' + stat + ' with '+ valueDelta, this.desires);
 		var availableStats = ['work','bathroom','food','sleep'];
 		if( availableStats.indexOf(stat)!==-1){
-			if(this.desires[stat] + valueDelta <= 0){
-				this.desires[stat] = 0;
+			var potentialStat = this.desires[stat] + valueDelta
+			if( potentialStat < 0){
 				console.log(this.name + ' needs ' + stat);
+				this.desires[stat]=0;
 				this.callbacks.handleNeed(this, stat);
-			} else {
-				this.desires[stat] += valueDelta;
+			} else if(potentialStat>this.maxDesires[stat]){
+				this.desires[stat] = this.maxDesires[stat];
+				console.log(this.name + ' is content with ' + stat);
+			}
+			else {
+				this.desires[stat] = potentialStat;
 			}
 		}
 	}
@@ -69,14 +75,18 @@ class StormTrooper{
 
 class DeathStarBlock{
 	constructor(){
+		this.timer = null;
+		this.timeInterval = 500;
 		this.rooms = {
 			'detention center': new Room('work', 'detention center'),
 			'latrine': new Room('bathroom', 'latrine'),
 			'mess hall':new Room('food', 'mess hall'),
 			'barracks': new Room('sleep','barracks')
 		};
+		this.roomCount=4;
 		this.handleNeed = this.handleNeed.bind(this);
 		this.addPerson('barracks', 'tk421');
+		this.start();
 	}
 	addPerson( room, name ){
 		var person = new StormTrooper(name, this.handleNeed);
@@ -86,15 +96,15 @@ class DeathStarBlock{
 		person.start();
 	}
 	handleNeed( person, need){
-		debugger;
 		var foundRoom = this.findNeededRoom( need );
-		if(foundRoom){
-			var oldRoom = person.getRoom();
-			oldRoom.removeOccupant( person );
-			foundRoom.addOccupant( person );
-			console.log( person.name + ' goes from the '+oldRoom.name + ' to the ' + foundRoom.name);
+		if(person.getRoom().type !== need){
+			if(foundRoom){
+				var oldRoom = person.getRoom();
+				oldRoom.removeOccupant( person );
+				foundRoom.addOccupant( person );
+				console.log( person.name + ' goes from the '+oldRoom.name + ' to the ' + foundRoom.name);
+			}
 		}
-
 	}
 	findNeededRoom( need ){
 		for(var roomIndex in this.rooms){
@@ -103,6 +113,22 @@ class DeathStarBlock{
 			}
 		}
 		return false;	
+	}
+	update(){
+		var rooms = Object.values(this.rooms);
+		for(var roomIndex=0; roomIndex<rooms.length; roomIndex++){
+			rooms[roomIndex].update();
+		}
+	}
+	start(){
+		if(this.timer){
+			this.stop();
+		}
+		this.timer = setInterval(this.update.bind(this),this.timeInterval);
+	}
+	stop(){
+		clearInterval(this.timer);
+		this.timer = null;
 	}
 }
 
@@ -131,7 +157,7 @@ class Room{
 		return false;
 	}
 	update(){
-		for(var i=0; i< this.occupants; i++){
+		for(var i=0; i< this.occupants.length; i++){
 			this.updateOccupant( this.occupants[i] );
 		}
 	}
@@ -145,13 +171,13 @@ class Room{
 				deltaValue = -50;
 				break;
 			case 'food':
-				deltaValue = -10;
+				deltaValue = +10;
 				break;
 			case 'sleep':
-				deltaValue = -3;
+				deltaValue = +3;
 				break; 
 		}
-		occupant.updateStat(this.type, -1);
+		occupant.updateStat(this.type, deltaValue);
 	}
 }
 
