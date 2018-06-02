@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<script type="text/javascript">
+
+class StormTrooper{
+	constructor(name, haveNeedCallback){
+		this.callbacks = {
+			handleNeed: haveNeedCallback
+		};
+		this.name = name;
+		this.room = null;
+		this.desires = {
+			work: 0,
+			bathroom: 20,
+			food: 1,
+			sleep: 100
+		}
+		this.maxDesires = {
+			work: 100,
+			bathroom: 100,
+			food: 100,
+			sleep: 100
+		}
+
+		this.timer = null;
+
+	}
+	enterRoom(room){
+		this.room = room;
+	}
+	leaveRoom(){
+		this.room = null;
+	}
+	getRoom(){
+		return this.room;
+	}
+	update(){
+		
+		this.updateStat('food',-1);
+		this.updateStat('sleep', -1);;
+		//console.log(this.name + ' stats: ', JSON.stringify(this.desires));
+	}
+	updateStat( stat, valueDelta){
+		var availableStats = ['work','bathroom','food','sleep'];
+		if( availableStats.indexOf(stat)!==-1){
+			if(this.desires[stat] + valueDelta <= 0){
+				this.desires[stat] = 0;
+				console.log(this.name + ' needs ' + stat);
+				this.callbacks.handleNeed(this, stat);
+			} else {
+				this.desires[stat] += valueDelta;
+			}
+		}
+	}
+	start(){
+		if(this.timer){
+			this.stop();
+		}
+		this.timer = setInterval( this.update.bind(this), 500);
+	}
+	stop(){
+		clearInterval(this.timer);
+		this.timer = null;
+	}
+
+}
+
+class DeathStarBlock{
+	constructor(){
+		this.rooms = {
+			'detention center': new Room('work', 'detention center'),
+			'latrine': new Room('bathroom', 'latrine'),
+			'mess hall':new Room('food', 'mess hall'),
+			'barracks': new Room('sleep','barracks')
+		};
+		this.handleNeed = this.handleNeed.bind(this);
+		this.addPerson('barracks', 'tk421');
+	}
+	addPerson( room, name ){
+		var person = new StormTrooper(name, this.handleNeed);
+		if(this.rooms[room]!==undefined){
+			this.rooms[room].addOccupant( person );
+		}
+		person.start();
+	}
+	handleNeed( person, need){
+		debugger;
+		var foundRoom = this.findNeededRoom( need );
+		if(foundRoom){
+			var oldRoom = person.getRoom();
+			oldRoom.removeOccupant( person );
+			foundRoom.addOccupant( person );
+			console.log( person.name + ' goes from the '+oldRoom.name + ' to the ' + foundRoom.name);
+		}
+
+	}
+	findNeededRoom( need ){
+		for(var roomIndex in this.rooms){
+			if(this.rooms[roomIndex].type === need){
+				return this.rooms[roomIndex];
+			}
+		}
+		return false;	
+	}
+}
+
+class Room{
+	constructor(type, name){
+		this.type = type;
+		this.name = name;
+		this.occupants = [];
+	}
+	addOccupant( person ){
+		this.occupants.push(person);
+		person.enterRoom(this);
+		return true;
+	}
+	removeOccupant(person){
+		var personIndex = this.occupants.indexOf(person);
+		if(personIndex!==-1){
+			var removed = this.occupants.splice(personIndex, 1);
+			if(removed.length > 0){
+				person.leaveRoom();
+				return true
+			} 
+			return false;
+		}
+		console.error(person.name+' is not in this room')
+		return false;
+	}
+	update(){
+		for(var i=0; i< this.occupants; i++){
+			this.updateOccupant( this.occupants[i] );
+		}
+	}
+	updateOccupant( occupant ){
+		var deltaValue = null;
+		switch( this.type ){
+			case 'work':
+				deltaValue = -1;
+				break;
+			case 'bathroom':
+				deltaValue = -50;
+				break;
+			case 'food':
+				deltaValue = -10;
+				break;
+			case 'sleep':
+				deltaValue = -3;
+				break; 
+		}
+		occupant.updateStat(this.type, -1);
+	}
+}
+
+var ogDS = new DeathStarBlock();
+
+
+
+
+
+
+
+
+
+
+
+
+	</script>
+</head>
+<body>
+
+</body>
+</html>
